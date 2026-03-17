@@ -1,0 +1,719 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model activity_logs {
+  log_id      String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  user_id     String?   @db.Char(36)
+  action      String    @db.VarChar(100)
+  entity_type String?   @db.VarChar(100)
+  entity_id   String?   @db.Char(36)
+  description String?   @db.Text
+  ip_address  String?   @db.VarChar(45)
+  user_agent  String?   @db.Text
+  metadata    Json?
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  users       users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_al_user")
+
+  @@index([user_id], map: "fk_al_user")
+}
+
+model ai_chat_logs {
+  log_id           String            @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  session_id       String?           @db.Char(36)
+  message_id       String?           @db.Char(36)
+  prompt           String?           @db.Text
+  response         String?           @db.Text
+  model            String?           @db.VarChar(100)
+  tokens_used      Int?
+  response_time_ms Int?
+  confidence_score Decimal?          @db.Decimal(5, 4)
+  intent           String?           @db.VarChar(100)
+  entities         Json?
+  sentiment        String?           @db.VarChar(50)
+  created_at       DateTime?         @default(now()) @db.DateTime(0)
+  messages         messages?         @relation(fields: [message_id], references: [message_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_acl_message")
+  ai_chat_sessions ai_chat_sessions? @relation(fields: [session_id], references: [session_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_acl_session")
+
+  @@index([message_id], map: "fk_acl_message")
+  @@index([session_id], map: "idx_acl_session")
+}
+
+model ai_chat_sessions {
+  session_id      String         @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  conversation_id String?        @db.Char(36)
+  user_id         String?        @db.Char(36)
+  context         Json?
+  total_messages  Int?           @default(0)
+  total_tokens    Int?           @default(0)
+  started_at      DateTime?      @default(now()) @db.DateTime(0)
+  ended_at        DateTime?      @db.DateTime(0)
+  created_at      DateTime?      @default(now()) @db.DateTime(0)
+  ai_chat_logs    ai_chat_logs[]
+  conversations   conversations? @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_acs_conv")
+  users           users?         @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_acs_user")
+
+  @@index([conversation_id], map: "fk_acs_conv")
+  @@index([user_id], map: "fk_acs_user")
+}
+
+model ai_training_data {
+  training_id       String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  category          String    @db.VarChar(100)
+  question          String    @db.Text
+  answer            String    @db.Text
+  keywords          Json?
+  context           Json?
+  is_active         Boolean?  @default(true)
+  usage_count       Int?      @default(0)
+  positive_feedback Int?      @default(0)
+  negative_feedback Int?      @default(0)
+  created_by        String?   @db.Char(36)
+  created_at        DateTime? @default(now()) @db.DateTime(0)
+  updated_at        DateTime? @default(now()) @db.DateTime(0)
+  users             users?    @relation(fields: [created_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_atd_user")
+
+  @@index([created_by], map: "fk_atd_user")
+}
+
+model banners {
+  banner_id        String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  title            String    @db.VarChar(255)
+  image_url        String    @db.Text
+  mobile_image_url String?   @db.Text
+  link_url         String?   @db.Text
+  position         String?   @db.VarChar(50)
+  display_order    Int?      @default(0)
+  start_date       DateTime? @db.DateTime(0)
+  end_date         DateTime? @db.DateTime(0)
+  is_active        Boolean?  @default(true)
+  click_count      Int?      @default(0)
+  created_at       DateTime? @default(now()) @db.DateTime(0)
+  updated_at       DateTime? @default(now()) @db.DateTime(0)
+}
+
+model blog_post_tags {
+  post_id    String     @db.Char(36)
+  tag_id     String     @db.Char(36)
+  blog_posts blog_posts @relation(fields: [post_id], references: [post_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_bpt_post")
+  blog_tags  blog_tags  @relation(fields: [tag_id], references: [tag_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_bpt_tag")
+
+  @@id([post_id, tag_id])
+  @@index([tag_id], map: "fk_bpt_tag")
+}
+
+model blog_posts {
+  post_id          String           @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  title            String           @db.VarChar(255)
+  slug             String           @unique(map: "uq_blog_posts_slug") @db.VarChar(255)
+  content          String?          @db.LongText
+  excerpt          String?          @db.Text
+  featured_image   String?          @db.Text
+  status           String?          @default("draft") @db.VarChar(20)
+  category_id      String?          @db.Char(36)
+  author_id        String?          @db.Char(36)
+  view_count       Int?             @default(0)
+  meta_title       String?          @db.VarChar(255)
+  meta_description String?          @db.Text
+  meta_keywords    String?          @db.Text
+  published_at     DateTime?        @db.DateTime(0)
+  created_at       DateTime?        @default(now()) @db.DateTime(0)
+  updated_at       DateTime?        @default(now()) @db.DateTime(0)
+  blog_post_tags   blog_post_tags[]
+  users            users?           @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_bp_author")
+  categories       categories?      @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_bp_category")
+
+  @@index([author_id], map: "fk_bp_author")
+  @@index([category_id], map: "idx_blog_posts_cat")
+  @@index([slug], map: "idx_blog_posts_slug")
+  @@index([status], map: "idx_blog_posts_status")
+}
+
+model blog_tags {
+  tag_id         String           @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name           String           @db.VarChar(100)
+  slug           String           @unique(map: "uq_blog_tags_slug") @db.VarChar(100)
+  created_at     DateTime?        @default(now()) @db.DateTime(0)
+  blog_post_tags blog_post_tags[]
+}
+
+model brands {
+  brand_id    String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name        String     @db.VarChar(255)
+  slug        String     @unique(map: "uq_brands_slug") @db.VarChar(255)
+  logo_url    String?    @db.Text
+  description String?    @db.Text
+  website     String?    @db.VarChar(255)
+  is_active   Boolean?   @default(true)
+  created_at  DateTime?  @default(now()) @db.DateTime(0)
+  updated_at  DateTime?  @default(now()) @db.DateTime(0)
+  products    products[]
+}
+
+model cart_items {
+  cart_item_id     String            @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  cart_id          String?           @db.Char(36)
+  product_id       String?           @db.Char(36)
+  variant_id       String?           @db.Char(36)
+  quantity         Int               @default(1)
+  price            Decimal           @db.Decimal(15, 2)
+  created_at       DateTime?         @default(now()) @db.DateTime(0)
+  updated_at       DateTime?         @default(now()) @db.DateTime(0)
+  carts            carts?            @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ci_cart")
+  products         products?         @relation(fields: [product_id], references: [product_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ci_product")
+  product_variants product_variants? @relation(fields: [variant_id], references: [variant_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ci_variant")
+
+  @@index([cart_id], map: "fk_ci_cart")
+  @@index([product_id], map: "fk_ci_product")
+  @@index([variant_id], map: "fk_ci_variant")
+}
+
+model carts {
+  cart_id    String       @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  user_id    String?      @db.Char(36)
+  session_id String?      @db.VarChar(255)
+  created_at DateTime?    @default(now()) @db.DateTime(0)
+  updated_at DateTime?    @default(now()) @db.DateTime(0)
+  cart_items cart_items[]
+  users      users?       @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cart_user")
+
+  @@index([user_id], map: "fk_cart_user")
+}
+
+model categories {
+  category_id      String       @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  parent_id        String?      @db.Char(36)
+  name             String       @db.VarChar(255)
+  slug             String       @unique(map: "uq_categories_slug") @db.VarChar(255)
+  description      String?      @db.Text
+  image_url        String?      @db.Text
+  icon             String?      @db.VarChar(100)
+  display_order    Int?         @default(0)
+  is_active        Boolean?     @default(true)
+  meta_title       String?      @db.VarChar(255)
+  meta_description String?      @db.Text
+  meta_keywords    String?      @db.Text
+  created_at       DateTime?    @default(now()) @db.DateTime(0)
+  updated_at       DateTime?    @default(now()) @db.DateTime(0)
+  blog_posts       blog_posts[]
+  categories       categories?  @relation("categoriesTocategories", fields: [parent_id], references: [category_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cat_parent")
+  other_categories categories[] @relation("categoriesTocategories")
+  products         products[]
+
+  @@index([parent_id], map: "fk_cat_parent")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model chat_feedback {
+  feedback_id     String         @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  conversation_id String?        @db.Char(36)
+  message_id      String?        @db.Char(36)
+  rating          Int?           @db.TinyInt
+  feedback_type   String?        @db.VarChar(50)
+  comment         String?        @db.Text
+  created_at      DateTime?      @default(now()) @db.DateTime(0)
+  conversations   conversations? @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cf_conv")
+  messages        messages?      @relation(fields: [message_id], references: [message_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cf_message")
+
+  @@index([conversation_id], map: "fk_cf_conv")
+  @@index([message_id], map: "fk_cf_message")
+}
+
+model chat_quick_replies {
+  reply_id      String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  category      String?   @db.VarChar(100)
+  title         String    @db.VarChar(255)
+  message       String    @db.Text
+  shortcut      String?   @db.VarChar(50)
+  display_order Int?      @default(0)
+  is_active     Boolean?  @default(true)
+  created_by    String?   @db.Char(36)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
+  users         users?    @relation(fields: [created_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cqr_user")
+
+  @@index([created_by], map: "fk_cqr_user")
+}
+
+model conversations {
+  conversation_id                        String             @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  user_id                                String?            @db.Char(36)
+  session_id                             String?            @db.VarChar(255)
+  type                                   String?            @default("customer_support") @db.VarChar(50)
+  status                                 String?            @default("active") @db.VarChar(50)
+  assigned_to                            String?            @db.Char(36)
+  priority                               String?            @default("normal") @db.VarChar(20)
+  subject                                String?            @db.VarChar(255)
+  started_at                             DateTime?          @default(now()) @db.DateTime(0)
+  last_message_at                        DateTime?          @default(now()) @db.DateTime(0)
+  closed_at                              DateTime?          @db.DateTime(0)
+  customer_name                          String?            @db.VarChar(255)
+  customer_email                         String?            @db.VarChar(255)
+  customer_phone                         String?            @db.VarChar(20)
+  tags                                   Json?
+  metadata                               Json?
+  created_at                             DateTime?          @default(now()) @db.DateTime(0)
+  updated_at                             DateTime?          @default(now()) @db.DateTime(0)
+  ai_chat_sessions                       ai_chat_sessions[]
+  chat_feedback                          chat_feedback[]
+  users_conversations_assigned_toTousers users?             @relation("conversations_assigned_toTousers", fields: [assigned_to], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_conv_assigned")
+  users_conversations_user_idTousers     users?             @relation("conversations_user_idTousers", fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_conv_user")
+  messages                               messages[]
+
+  @@index([assigned_to], map: "fk_conv_assigned")
+  @@index([status], map: "idx_conversations_status")
+  @@index([user_id], map: "idx_conversations_user")
+}
+
+model coupon_usage {
+  usage_id  String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  coupon_id String?   @db.Char(36)
+  user_id   String?   @db.Char(36)
+  order_id  String?   @db.Char(36)
+  used_at   DateTime? @default(now()) @db.DateTime(0)
+  coupons   coupons?  @relation(fields: [coupon_id], references: [coupon_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cu_coupon")
+  orders    orders?   @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cu_order")
+  users     users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cu_user")
+
+  @@index([coupon_id], map: "fk_cu_coupon")
+  @@index([order_id], map: "fk_cu_order")
+  @@index([user_id], map: "fk_cu_user")
+}
+
+model coupons {
+  coupon_id            String         @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  code                 String         @unique(map: "uq_coupons_code") @db.VarChar(50)
+  description          String?        @db.Text
+  discount_type        String         @db.VarChar(20)
+  discount_value       Decimal        @db.Decimal(15, 2)
+  min_purchase_amount  Decimal?       @db.Decimal(15, 2)
+  max_discount_amount  Decimal?       @db.Decimal(15, 2)
+  usage_limit          Int?
+  usage_limit_per_user Int?
+  usage_count          Int?           @default(0)
+  valid_from           DateTime       @db.DateTime(0)
+  valid_to             DateTime       @db.DateTime(0)
+  is_active            Boolean?       @default(true)
+  created_at           DateTime?      @default(now()) @db.DateTime(0)
+  updated_at           DateTime?      @default(now()) @db.DateTime(0)
+  coupon_usage         coupon_usage[]
+}
+
+model inventory_transactions {
+  transaction_id   String            @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  product_id       String?           @db.Char(36)
+  variant_id       String?           @db.Char(36)
+  transaction_type String            @db.VarChar(50)
+  quantity         Int
+  reference_id     String?           @db.Char(36)
+  notes            String?           @db.Text
+  created_by       String?           @db.Char(36)
+  created_at       DateTime?         @default(now()) @db.DateTime(0)
+  products         products?         @relation(fields: [product_id], references: [product_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_it_product")
+  users            users?            @relation(fields: [created_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_it_user")
+  product_variants product_variants? @relation(fields: [variant_id], references: [variant_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_it_variant")
+
+  @@index([product_id], map: "fk_it_product")
+  @@index([created_by], map: "fk_it_user")
+  @@index([variant_id], map: "fk_it_variant")
+}
+
+model media_library {
+  media_id          String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  filename          String    @db.VarChar(255)
+  original_filename String    @db.VarChar(255)
+  file_path         String    @db.Text
+  file_url          String    @db.Text
+  file_type         String?   @db.VarChar(50)
+  mime_type         String?   @db.VarChar(100)
+  file_size         BigInt?
+  width             Int?
+  height            Int?
+  alt_text          String?   @db.VarChar(255)
+  title             String?   @db.VarChar(255)
+  description       String?   @db.Text
+  uploaded_by       String?   @db.Char(36)
+  created_at        DateTime? @default(now()) @db.DateTime(0)
+  users             users?    @relation(fields: [uploaded_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ml_user")
+
+  @@index([uploaded_by], map: "fk_ml_user")
+}
+
+model menu_items {
+  menu_item_id     String       @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  menu_id          String?      @db.Char(36)
+  parent_id        String?      @db.Char(36)
+  title            String       @db.VarChar(255)
+  url              String?      @db.VarChar(255)
+  target           String?      @default("_self") @db.VarChar(20)
+  icon             String?      @db.VarChar(100)
+  display_order    Int?         @default(0)
+  is_active        Boolean?     @default(true)
+  created_at       DateTime?    @default(now()) @db.DateTime(0)
+  menus            menus?       @relation(fields: [menu_id], references: [menu_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_mi_menu")
+  menu_items       menu_items?  @relation("menu_itemsTomenu_items", fields: [parent_id], references: [menu_item_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_mi_parent")
+  other_menu_items menu_items[] @relation("menu_itemsTomenu_items")
+
+  @@index([menu_id], map: "fk_mi_menu")
+  @@index([parent_id], map: "fk_mi_parent")
+}
+
+model menus {
+  menu_id    String       @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name       String       @db.VarChar(100)
+  location   String?      @db.VarChar(50)
+  created_at DateTime?    @default(now()) @db.DateTime(0)
+  updated_at DateTime?    @default(now()) @db.DateTime(0)
+  menu_items menu_items[]
+}
+
+model messages {
+  message_id      String          @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  conversation_id String?         @db.Char(36)
+  sender_id       String?         @db.Char(36)
+  sender_type     String          @db.VarChar(50)
+  message_type    String?         @default("text") @db.VarChar(50)
+  content         String?         @db.Text
+  attachments     Json?
+  metadata        Json?
+  is_read         Boolean?        @default(false)
+  read_at         DateTime?       @db.DateTime(0)
+  created_at      DateTime?       @default(now()) @db.DateTime(0)
+  ai_chat_logs    ai_chat_logs[]
+  chat_feedback   chat_feedback[]
+  conversations   conversations?  @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_msg_conv")
+  users           users?          @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_msg_sender")
+
+  @@index([sender_id], map: "fk_msg_sender")
+  @@index([conversation_id], map: "idx_messages_conv")
+  @@index([created_at], map: "idx_messages_created")
+}
+
+model notifications {
+  notification_id String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  user_id         String?   @db.Char(36)
+  type            String    @db.VarChar(50)
+  title           String    @db.VarChar(255)
+  message         String    @db.Text
+  action_url      String?   @db.Text
+  icon            String?   @db.VarChar(100)
+  is_read         Boolean?  @default(false)
+  read_at         DateTime? @db.DateTime(0)
+  data            Json?
+  created_at      DateTime? @default(now()) @db.DateTime(0)
+  users           users?    @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notif_user")
+
+  @@index([is_read], map: "idx_notif_is_read")
+  @@index([user_id], map: "idx_notif_user")
+}
+
+model order_items {
+  order_item_id    String            @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  order_id         String?           @db.Char(36)
+  product_id       String?           @db.Char(36)
+  variant_id       String?           @db.Char(36)
+  product_name     String            @db.VarChar(255)
+  variant_name     String?           @db.VarChar(255)
+  sku              String?           @db.VarChar(100)
+  quantity         Int
+  unit_price       Decimal           @db.Decimal(15, 2)
+  total_price      Decimal           @db.Decimal(15, 2)
+  created_at       DateTime?         @default(now()) @db.DateTime(0)
+  orders           orders?           @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_oi_order")
+  products         products?         @relation(fields: [product_id], references: [product_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_oi_product")
+  product_variants product_variants? @relation(fields: [variant_id], references: [variant_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_oi_variant")
+
+  @@index([variant_id], map: "fk_oi_variant")
+  @@index([order_id], map: "idx_oi_order")
+  @@index([product_id], map: "idx_oi_product")
+}
+
+model order_status_history {
+  history_id String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  order_id   String?   @db.Char(36)
+  status     String    @db.VarChar(50)
+  notes      String?   @db.Text
+  created_by String?   @db.Char(36)
+  created_at DateTime? @default(now()) @db.DateTime(0)
+  orders     orders?   @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_osh_order")
+  users      users?    @relation(fields: [created_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_osh_user")
+
+  @@index([order_id], map: "fk_osh_order")
+  @@index([created_by], map: "fk_osh_user")
+}
+
+model orders {
+  order_id               String                 @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  order_number           String                 @unique(map: "uq_orders_number") @db.VarChar(50)
+  user_id                String?                @db.Char(36)
+  status                 String?                @default("pending") @db.VarChar(50)
+  payment_status         String?                @default("pending") @db.VarChar(50)
+  shipping_status        String?                @default("pending") @db.VarChar(50)
+  customer_email         String                 @db.VarChar(255)
+  customer_phone         String?                @db.VarChar(20)
+  customer_name          String                 @db.VarChar(255)
+  shipping_address_line1 String                 @db.VarChar(255)
+  shipping_address_line2 String?                @db.VarChar(255)
+  shipping_city          String                 @db.VarChar(100)
+  shipping_district      String?                @db.VarChar(100)
+  shipping_ward          String?                @db.VarChar(100)
+  shipping_postal_code   String?                @db.VarChar(20)
+  shipping_country       String?                @default("Vietnam") @db.VarChar(100)
+  billing_address_line1  String?                @db.VarChar(255)
+  billing_address_line2  String?                @db.VarChar(255)
+  billing_city           String?                @db.VarChar(100)
+  billing_district       String?                @db.VarChar(100)
+  billing_ward           String?                @db.VarChar(100)
+  billing_postal_code    String?                @db.VarChar(20)
+  billing_country        String?                @db.VarChar(100)
+  subtotal               Decimal                @db.Decimal(15, 2)
+  shipping_fee           Decimal?               @default(0.00) @db.Decimal(15, 2)
+  tax_amount             Decimal?               @default(0.00) @db.Decimal(15, 2)
+  discount_amount        Decimal?               @default(0.00) @db.Decimal(15, 2)
+  total_amount           Decimal                @db.Decimal(15, 2)
+  coupon_code            String?                @db.VarChar(50)
+  payment_method         String?                @db.VarChar(50)
+  shipping_method        String?                @db.VarChar(50)
+  notes                  String?                @db.Text
+  internal_notes         String?                @db.Text
+  tracking_number        String?                @db.VarChar(100)
+  shipped_at             DateTime?              @db.DateTime(0)
+  delivered_at           DateTime?              @db.DateTime(0)
+  cancelled_at           DateTime?              @db.DateTime(0)
+  cancellation_reason    String?                @db.Text
+  created_at             DateTime?              @default(now()) @db.DateTime(0)
+  updated_at             DateTime?              @default(now()) @db.DateTime(0)
+  coupon_usage           coupon_usage[]
+  order_items            order_items[]
+  order_status_history   order_status_history[]
+  users                  users?                 @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_order_user")
+  payments               payments[]
+
+  @@index([created_at], map: "idx_orders_created")
+  @@index([order_number], map: "idx_orders_number")
+  @@index([status], map: "idx_orders_status")
+  @@index([user_id], map: "idx_orders_user")
+}
+
+model pages {
+  page_id          String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  title            String    @db.VarChar(255)
+  slug             String    @unique(map: "uq_pages_slug") @db.VarChar(255)
+  content          String?   @db.LongText
+  excerpt          String?   @db.Text
+  template         String?   @default("default") @db.VarChar(50)
+  status           String?   @default("draft") @db.VarChar(20)
+  featured_image   String?   @db.Text
+  meta_title       String?   @db.VarChar(255)
+  meta_description String?   @db.Text
+  meta_keywords    String?   @db.Text
+  author_id        String?   @db.Char(36)
+  published_at     DateTime? @db.DateTime(0)
+  created_at       DateTime? @default(now()) @db.DateTime(0)
+  updated_at       DateTime? @default(now()) @db.DateTime(0)
+  users            users?    @relation(fields: [author_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_page_author")
+
+  @@index([author_id], map: "fk_page_author")
+  @@index([slug], map: "idx_pages_slug")
+}
+
+model payments {
+  payment_id       String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  order_id         String?   @db.Char(36)
+  payment_method   String    @db.VarChar(50)
+  amount           Decimal   @db.Decimal(15, 2)
+  status           String?   @default("pending") @db.VarChar(50)
+  transaction_id   String?   @db.VarChar(255)
+  gateway_response Json?
+  paid_at          DateTime? @db.DateTime(0)
+  refunded_at      DateTime? @db.DateTime(0)
+  refund_amount    Decimal?  @db.Decimal(15, 2)
+  created_at       DateTime? @default(now()) @db.DateTime(0)
+  updated_at       DateTime? @default(now()) @db.DateTime(0)
+  orders           orders?   @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pay_order")
+
+  @@index([order_id], map: "fk_pay_order")
+}
+
+model product_images {
+  image_id      String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  product_id    String?   @db.Char(36)
+  image_url     String    @db.Text
+  alt_text      String?   @db.VarChar(255)
+  display_order Int?      @default(0)
+  is_primary    Boolean?  @default(false)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  products      products? @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pi_product")
+
+  @@index([product_id], map: "fk_pi_product")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model product_reviews {
+  review_id            String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  product_id           String?   @db.Char(36)
+  user_id              String?   @db.Char(36)
+  order_id             String?   @db.Char(36)
+  rating               Int?      @db.TinyInt
+  title                String?   @db.VarChar(255)
+  comment              String?   @db.Text
+  images               Json?
+  is_verified_purchase Boolean?  @default(false)
+  is_approved          Boolean?  @default(false)
+  helpful_count        Int?      @default(0)
+  created_at           DateTime? @default(now()) @db.DateTime(0)
+  updated_at           DateTime? @default(now()) @db.DateTime(0)
+  products             products? @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pr_product")
+  users                users?    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_pr_user")
+
+  @@index([product_id], map: "fk_pr_product")
+  @@index([user_id], map: "fk_pr_user")
+}
+
+model product_variants {
+  variant_id             String                   @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  product_id             String?                  @db.Char(36)
+  sku                    String?                  @unique(map: "uq_pv_sku") @db.VarChar(100)
+  name                   String?                  @db.VarChar(255)
+  option1_name           String?                  @db.VarChar(100)
+  option1_value          String?                  @db.VarChar(100)
+  option2_name           String?                  @db.VarChar(100)
+  option2_value          String?                  @db.VarChar(100)
+  option3_name           String?                  @db.VarChar(100)
+  option3_value          String?                  @db.VarChar(100)
+  price                  Decimal?                 @db.Decimal(15, 2)
+  compare_price          Decimal?                 @db.Decimal(15, 2)
+  cost_price             Decimal?                 @db.Decimal(15, 2)
+  stock_quantity         Int?                     @default(0)
+  image_url              String?                  @db.Text
+  is_active              Boolean?                 @default(true)
+  created_at             DateTime?                @default(now()) @db.DateTime(0)
+  updated_at             DateTime?                @default(now()) @db.DateTime(0)
+  cart_items             cart_items[]
+  inventory_transactions inventory_transactions[]
+  order_items            order_items[]
+  products               products?                @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pv_product")
+
+  @@index([product_id], map: "idx_pv_product")
+}
+
+model products {
+  product_id             String                   @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  category_id            String?                  @db.Char(36)
+  brand_id               String?                  @db.Char(36)
+  name                   String                   @db.VarChar(255)
+  slug                   String                   @unique(map: "uq_products_slug") @db.VarChar(255)
+  sku                    String?                  @unique(map: "uq_products_sku") @db.VarChar(100)
+  short_description      String?                  @db.Text
+  description            String?                  @db.Text
+  price                  Decimal                  @db.Decimal(15, 2)
+  compare_price          Decimal?                 @db.Decimal(15, 2)
+  cost_price             Decimal?                 @db.Decimal(15, 2)
+  status                 String?                  @default("draft") @db.VarChar(20)
+  featured               Boolean?                 @default(false)
+  best_seller            Boolean?                 @default(false)
+  new_arrival            Boolean?                 @default(false)
+  weight                 Decimal?                 @db.Decimal(10, 2)
+  dimensions             String?                  @db.VarChar(100)
+  meta_title             String?                  @db.VarChar(255)
+  meta_description       String?                  @db.Text
+  meta_keywords          String?                  @db.Text
+  view_count             Int?                     @default(0)
+  created_at             DateTime?                @default(now()) @db.DateTime(0)
+  updated_at             DateTime?                @default(now()) @db.DateTime(0)
+  published_at           DateTime?                @db.DateTime(0)
+  cart_items             cart_items[]
+  inventory_transactions inventory_transactions[]
+  order_items            order_items[]
+  product_images         product_images[]
+  product_reviews        product_reviews[]
+  product_variants       product_variants[]
+  brands                 brands?                  @relation(fields: [brand_id], references: [brand_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_prod_brand")
+  categories             categories?              @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_prod_category")
+
+  @@index([brand_id], map: "idx_products_brand")
+  @@index([category_id], map: "idx_products_category")
+  @@index([featured], map: "idx_products_featured")
+  @@index([slug], map: "idx_products_slug")
+  @@index([status], map: "idx_products_status")
+}
+
+model settings {
+  setting_id  String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  category    String    @db.VarChar(100)
+  key         String    @db.VarChar(100)
+  value       String?   @db.Text
+  data_type   String?   @default("string") @db.VarChar(50)
+  description String?   @db.Text
+  is_public   Boolean?  @default(false)
+  updated_by  String?   @db.Char(36)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  updated_at  DateTime? @default(now()) @db.DateTime(0)
+  users       users?    @relation(fields: [updated_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_set_user")
+
+  @@unique([category, key], map: "uq_settings_category_key")
+  @@index([updated_by], map: "fk_set_user")
+}
+
+model user_addresses {
+  address_id    String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  user_id       String?   @db.Char(36)
+  address_type  String?   @default("shipping") @db.VarChar(20)
+  full_name     String    @db.VarChar(255)
+  phone         String    @db.VarChar(20)
+  address_line1 String    @db.VarChar(255)
+  address_line2 String?   @db.VarChar(255)
+  city          String    @db.VarChar(100)
+  district      String?   @db.VarChar(100)
+  ward          String?   @db.VarChar(100)
+  postal_code   String?   @db.VarChar(20)
+  country       String?   @default("Vietnam") @db.VarChar(100)
+  is_default    Boolean?  @default(false)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
+  users         users?    @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ua_user")
+
+  @@index([user_id], map: "fk_ua_user")
+}
+
+model users {
+  user_id                                        String                   @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  email                                          String                   @unique(map: "uq_users_email") @db.VarChar(255)
+  password_hash                                  String                   @db.VarChar(255)
+  full_name                                      String                   @db.VarChar(255)
+  phone                                          String?                  @db.VarChar(20)
+  avatar_url                                     String?                  @db.Text
+  role                                           String                   @default("customer") @db.VarChar(50)
+  status                                         String?                  @default("active") @db.VarChar(20)
+  email_verified                                 Boolean?                 @default(false)
+  last_login                                     DateTime?                @db.DateTime(0)
+  created_at                                     DateTime?                @default(now()) @db.DateTime(0)
+  updated_at                                     DateTime?                @default(now()) @db.DateTime(0)
+  activity_logs                                  activity_logs[]
+  ai_chat_sessions                               ai_chat_sessions[]
+  ai_training_data                               ai_training_data[]
+  blog_posts                                     blog_posts[]
+  carts                                          carts[]
+  chat_quick_replies                             chat_quick_replies[]
+  conversations_conversations_assigned_toTousers conversations[]          @relation("conversations_assigned_toTousers")
+  conversations_conversations_user_idTousers     conversations[]          @relation("conversations_user_idTousers")
+  coupon_usage                                   coupon_usage[]
+  inventory_transactions                         inventory_transactions[]
+  media_library                                  media_library[]
+  messages                                       messages[]
+  notifications                                  notifications[]
+  order_status_history                           order_status_history[]
+  orders                                         orders[]
+  pages                                          pages[]
+  product_reviews                                product_reviews[]
+  settings                                       settings[]
+  user_addresses                                 user_addresses[]
+
+  @@index([role], map: "idx_users_role")
+  @@index([status], map: "idx_users_status")
+}
