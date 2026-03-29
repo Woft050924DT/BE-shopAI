@@ -1,13 +1,22 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { pool } = require("../helper/connectDB");
+const { prisma } = require("../helper/prisma");
 
-const JWT_SECRET = process.env.JWT_SECRET || "jwt_dev_secret_please_change";
+const JWT_SECRET =
+  process.env.JWT_SECRET_KEY ||
+  process.env.JWT_SECRET ||
+  "jwt_dev_secret_please_change";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const SALT_ROUNDS = 10;
-const USERS_TABLE = "auth_users";
 
-
+function mapUser(user) {
+  return {
+    id: user.user_id,
+    fullName: user.full_name,
+    email: user.email,
+    createdAt: user.created_at,
+  };
+}
 
 async function registerUser({ fullName, email, password }) {
   const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -15,35 +24,47 @@ async function registerUser({ fullName, email, password }) {
   const rawPassword = String(password || "");
 
   if (!normalizedName || !normalizedEmail || !rawPassword) {
-    return { status: 400, payload: { message: "Thiếu thông tin đăng ký" } };
+    return { status: 400, payload: { message: "Thieu thong tin dang ky" } };
   }
 
-  const existingUser = await pool.query(`SELECT id FROM ${USERS_TABLE} WHERE email = $1`, [normalizedEmail]);
+  const existingUser = await prisma.users.findUnique({
+    where: { email: normalizedEmail },
+    select: { user_id: true },
+  });
 
-  if (existingUser.rows.length > 0) {
-    return { status: 409, payload: { message: "Email đã được sử dụng" } };
+  if (existingUser) {
+    return { status: 409, payload: { message: "Email da duoc su dung" } };
   }
 
   const passwordHash = await bcrypt.hash(rawPassword, SALT_ROUNDS);
-  const createdUser = await pool.query(
-    `INSERT INTO ${USERS_TABLE} (full_name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, full_name, email, created_at`,
-    [normalizedName, normalizedEmail, passwordHash]
-  );
+  const createdUser = await prisma.users.create({
+    data: {
+      full_name: normalizedName,
+      email: normalizedEmail,
+      password_hash: passwordHash,
+      role: "customer",
+      status: "active",
+    },
+    select: {
+      user_id: true,
+      full_name: true,
+      email: true,
+      created_at: true,
+    },
+  });
 
-  const user = createdUser.rows[0];
-  const token = jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  const token = jwt.sign(
+    { sub: createdUser.user_id, email: createdUser.email },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
 
   return {
     status: 201,
     payload: {
-      message: "Đăng ký thành công",
+      message: "Dang ky thanh cong",
       token,
-      user: {
-        id: user.id,
-        fullName: user.full_name,
-        email: user.email,
-        createdAt: user.created_at,
-      },
+      user: mapUser(createdUser),
     },
   };
 }
@@ -53,38 +74,40 @@ async function loginUser({ email, password }) {
   const rawPassword = String(password || "");
 
   if (!normalizedEmail || !rawPassword) {
-    return { status: 400, payload: { message: "Thiếu email hoặc mật khẩu" } };
+    return { status: 400, payload: { message: "Thieu email hoac mat khau" } };
   }
 
-  const result = await pool.query(
-    `SELECT id, full_name, email, password_hash, created_at FROM ${USERS_TABLE} WHERE email = $1`,
-    [normalizedEmail]
-  );
+  const user = await prisma.users.findUnique({
+    where: { email: normalizedEmail },
+    select: {
+      user_id: true,
+      full_name: true,
+      email: true,
+      password_hash: true,
+      created_at: true,
+    },
+  });
 
-  if (result.rows.length === 0) {
-    return { status: 401, payload: { message: "Email hoặc mật khẩu không đúng" } };
+  if (!user) {
+    return { status: 401, payload: { message: "Email hoac mat khau khong dung" } };
   }
 
-  const user = result.rows[0];
   const isMatch = await bcrypt.compare(rawPassword, user.password_hash);
 
   if (!isMatch) {
-    return { status: 401, payload: { message: "Email hoặc mật khẩu không đúng" } };
+    return { status: 401, payload: { message: "Email hoac mat khau khong dung" } };
   }
 
-  const token = jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  const token = jwt.sign({ sub: user.user_id, email: user.email }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN,
+  });
 
   return {
     status: 200,
     payload: {
-      message: "Đăng nhập thành công",
+      message: "Dang nhap thanh cong",
       token,
-      user: {
-        id: user.id,
-        fullName: user.full_name,
-        email: user.email,
-        createdAt: user.created_at,
-      },
+      user: mapUser(user),
     },
   };
 }

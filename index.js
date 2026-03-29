@@ -1,3 +1,5 @@
+require("./helper/loadEnv");
+
 const express = require("express");
 const cors = require("cors");
 const authRouter = require("./routes/auth.routes");
@@ -6,7 +8,7 @@ const orderRouter = require("./routes/order.routes");
 const { notFoundHandler, errorHandler } = require("./middlewares/error.middleware");
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 5000;
 
 app.use(cors());
 app.use(express.json());
