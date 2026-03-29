@@ -51,6 +51,12 @@ Response:
 
 ## 2. Auth
 
+Luu y:
+
+- Sau khi `register` hoac `login` thanh cong, backend se tu set cookie `httpOnly` ten `access_token`
+- FE can gui request kem cookie (`withCredentials: true` voi axios hoac `credentials: "include"` voi fetch)
+- Role API su dung `user` va `admin` (du lieu DB cu `customer` se duoc map thanh `user`)
+
 ### POST `/api/auth/register`
 
 Dang ky tai khoan.
@@ -70,12 +76,13 @@ Response thanh cong:
 ```json
 {
   "success": true,
-  "message": "Dang ky thanh cong",
+  "message": "Dang ky thanh cong",  
   "token": "jwt_token",
   "user": {
     "id": "user-id",
     "fullName": "Nguyen Van A",
     "email": "vana@gmail.com",
+    "role": "user",
     "createdAt": "2026-03-28T00:00:00.000Z"
   }
 }
@@ -105,10 +112,52 @@ Response thanh cong:
     "id": "user-id",
     "fullName": "Nguyen Van A",
     "email": "vana@gmail.com",
+    "role": "user",
     "createdAt": "2026-03-28T00:00:00.000Z"
   }
 }
 ```
+
+### POST `/api/auth/logout`
+
+Xoa cookie dang nhap.
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Dang xuat thanh cong"
+}
+```
+
+### GET `/api/auth/me`
+
+Lay thong tin user hien tai tu cookie token.
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Lay thong tin tai khoan thanh cong",
+  "user": {
+    "id": "user-id",
+    "fullName": "Nguyen Van A",
+    "email": "vana@gmail.com",
+    "role": "user",
+    "createdAt": "2026-03-28T00:00:00.000Z"
+  }
+}
+```
+
+### GET `/api/auth/user`
+
+Route yeu cau dang nhap va role `user` hoac `admin`.
+
+### GET `/api/auth/admin`
+
+Route yeu cau dang nhap va role `admin`.
 
 ## 3. San pham
 
@@ -438,12 +487,20 @@ Response:
 | HTTP Code | Y nghia |
 |---|---|
 | `400` | Thieu du lieu, du lieu khong hop le, het hang, bien the khong hop le |
-| `401` | Sai email hoac mat khau |
+| `401` | Sai email hoac mat khau, chua dang nhap, token het han |
+| `403` | Dang nhap roi nhung khong du quyen |
 | `404` | Khong tim thay route, san pham, hoac don hang |
 | `409` | Email da ton tai |
 | `500` | Loi may chu |
 
 ## 6. Goi y luong FE
+
+### Login
+
+1. Goi `POST /api/auth/login`
+2. Bat `credentials` de nhan cookie
+3. Goi `GET /api/auth/me` de lay user va role hien tai
+4. Neu `role = admin` thi vao man admin, nguoc lai vao man user
 
 ### Man hinh danh sach san pham
 

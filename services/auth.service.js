@@ -1,12 +1,6 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const { prisma } = require("../helper/prisma");
-
-const JWT_SECRET =
-  process.env.JWT_SECRET_KEY ||
-  process.env.JWT_SECRET ||
-  "jwt_dev_secret_please_change";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+const { normalizeRole, signAccessToken } = require("../helper/auth");
 const SALT_ROUNDS = 10;
 
 function mapUser(user) {
@@ -14,6 +8,7 @@ function mapUser(user) {
     id: user.user_id,
     fullName: user.full_name,
     email: user.email,
+    role: normalizeRole(user.role),
     createdAt: user.created_at,
   };
 }
@@ -49,15 +44,12 @@ async function registerUser({ fullName, email, password }) {
       user_id: true,
       full_name: true,
       email: true,
+      role: true,
       created_at: true,
     },
   });
 
-  const token = jwt.sign(
-    { sub: createdUser.user_id, email: createdUser.email },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
+  const token = signAccessToken(createdUser);
 
   return {
     status: 201,
@@ -83,6 +75,7 @@ async function loginUser({ email, password }) {
       user_id: true,
       full_name: true,
       email: true,
+      role: true,
       password_hash: true,
       created_at: true,
     },
@@ -98,9 +91,7 @@ async function loginUser({ email, password }) {
     return { status: 401, payload: { message: "Email hoac mat khau khong dung" } };
   }
 
-  const token = jwt.sign({ sub: user.user_id, email: user.email }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
+  const token = signAccessToken(user);
 
   return {
     status: 200,
