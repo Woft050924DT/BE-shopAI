@@ -3,6 +3,7 @@ require("./helper/loadEnv");
 const express = require("express");
 const cors = require("cors");
 const authRouter = require("./routes/auth.routes");
+const categoryRouter = require("./routes/category.routes");
 const productRouter = require("./routes/product.routes");
 const orderRouter = require("./routes/order.routes");
 const { notFoundHandler, errorHandler } = require("./middlewares/error.middleware");
@@ -23,6 +24,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/categories", categoryRouter);
 app.use("/api/products", productRouter);
 app.use("/api/orders", orderRouter);
 

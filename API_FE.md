@@ -159,7 +159,145 @@ Route yeu cau dang nhap va role `user` hoac `admin`.
 
 Route yeu cau dang nhap va role `admin`.
 
-## 3. San pham
+## 3. Danh muc
+
+### POST `/api/categories`
+
+Tao danh muc moi. Route yeu cau dang nhap va role `admin`.
+
+Request body:
+
+```json
+{
+  "parentId": null,
+  "name": "Dien thoai",
+  "slug": "dien-thoai",
+  "description": "Danh muc dien thoai",
+  "imageUrl": "https://example.com/category-phone.jpg",
+  "icon": "phone",
+  "displayOrder": 1,
+  "isActive": true,
+  "metaTitle": "Dien thoai",
+  "metaDescription": "Danh muc dien thoai",
+  "metaKeywords": "dien thoai, smartphone"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Tao danh muc thanh cong",
+  "item": {
+    "id": "category-id",
+    "parentId": null,
+    "name": "Dien thoai",
+    "slug": "dien-thoai",
+    "description": "Danh muc dien thoai",
+    "imageUrl": "https://example.com/category-phone.jpg",
+    "icon": "phone",
+    "displayOrder": 1,
+    "metaTitle": "Dien thoai",
+    "metaDescription": "Danh muc dien thoai",
+    "metaKeywords": "dien thoai, smartphone",
+    "createdAt": "2026-03-28T00:00:00.000Z",
+    "updatedAt": "2026-03-28T00:00:00.000Z",
+    "productCount": 0,
+    "children": []
+  }
+}
+```
+
+### GET `/api/categories`
+
+Lay danh sach danh muc dang active.
+
+Query params:
+
+| Param | Bat buoc | Mo ta |
+|---|---|---|
+| `parentId` | Khong | Lay danh sach con truc tiep cua 1 danh muc |
+| `tree` | Khong | Mac dinh `true`; neu `false` se tra danh sach phang |
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Lay danh sach danh muc thanh cong",
+  "items": [
+    {
+      "id": "category-id",
+      "parentId": null,
+      "name": "Dien thoai",
+      "slug": "dien-thoai",
+      "description": "Danh muc dien thoai",
+      "imageUrl": "https://...",
+      "icon": "phone",
+      "displayOrder": 1,
+      "metaTitle": "Dien thoai",
+      "metaDescription": "Danh muc dien thoai",
+      "metaKeywords": "dien thoai, smartphone",
+      "createdAt": "2026-03-28T00:00:00.000Z",
+      "updatedAt": "2026-03-28T00:00:00.000Z",
+      "productCount": 12,
+      "children": [
+        {
+          "id": "child-category-id",
+          "parentId": "category-id",
+          "name": "IPhone",
+          "slug": "iphone",
+          "description": "Danh muc iPhone",
+          "imageUrl": "https://...",
+          "icon": "apple",
+          "displayOrder": 1,
+          "metaTitle": null,
+          "metaDescription": null,
+          "metaKeywords": null,
+          "createdAt": "2026-03-28T00:00:00.000Z",
+          "updatedAt": "2026-03-28T00:00:00.000Z",
+          "productCount": 4,
+          "children": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+### GET `/api/categories/:identifier`
+
+Lay chi tiet 1 danh muc theo `category_id` hoac `slug`.
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Lay chi tiet danh muc thanh cong",
+  "item": {
+    "id": "category-id",
+    "parentId": null,
+    "name": "Dien thoai",
+    "slug": "dien-thoai",
+    "description": "Danh muc dien thoai",
+    "imageUrl": "https://...",
+    "icon": "phone",
+    "displayOrder": 1,
+    "metaTitle": "Dien thoai",
+    "metaDescription": "Danh muc dien thoai",
+    "metaKeywords": "dien thoai, smartphone",
+    "createdAt": "2026-03-28T00:00:00.000Z",
+    "updatedAt": "2026-03-28T00:00:00.000Z",
+    "productCount": 12,
+    "parent": null,
+    "children": []
+  }
+}
+```
+
+## 4. San pham
 
 ### GET `/api/products`
 
@@ -171,6 +309,7 @@ Query params:
 |---|---|---|
 | `page` | Khong | Trang hien tai, mac dinh `1` |
 | `pageSize` | Khong | So luong moi trang, mac dinh `12`, toi da `50` |
+| `status` | Khong | Mac dinh `published`; co the dung `draft`, `archived`, `all` |
 | `search` | Khong | Tim theo ten, slug, sku, mo ta ngan |
 | `categoryId` | Khong | Loc theo danh muc |
 | `brandId` | Khong | Loc theo thuong hieu |
@@ -182,6 +321,10 @@ Vi du:
 
 ```txt
 GET /api/products?page=1&pageSize=8&search=iphone&featured=true
+```
+
+```txt
+GET /api/products?status=active
 ```
 
 Response:
@@ -302,7 +445,7 @@ Response:
 }
 ```
 
-## 4. Don hang
+## 5. Don hang
 
 ### POST `/api/orders`
 
@@ -482,7 +625,7 @@ Response:
 }
 ```
 
-## 5. Cac ma loi FE can xu ly
+## 6. Cac ma loi FE can xu ly
 
 | HTTP Code | Y nghia |
 |---|---|
@@ -493,7 +636,7 @@ Response:
 | `409` | Email da ton tai |
 | `500` | Loi may chu |
 
-## 6. Goi y luong FE
+## 7. Goi y luong FE
 
 ### Login
 

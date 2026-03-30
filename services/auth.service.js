@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const { prisma } = require("../helper/prisma");
 const { normalizeRole, signAccessToken } = require("../helper/auth");
 const SALT_ROUNDS = 10;
+const BCRYPT_HASH_REGEX = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 
 function mapUser(user) {
   return {
@@ -85,10 +86,22 @@ async function loginUser({ email, password }) {
     return { status: 401, payload: { message: "Email hoac mat khau khong dung" } };
   }
 
-  const isMatch = await bcrypt.compare(rawPassword, user.password_hash);
+  const storedPassword = String(user.password_hash || "");
+  const isBcryptHash = BCRYPT_HASH_REGEX.test(storedPassword);
+  const isMatch = isBcryptHash
+    ? await bcrypt.compare(rawPassword, storedPassword)
+    : rawPassword === storedPassword;
 
   if (!isMatch) {
     return { status: 401, payload: { message: "Email hoac mat khau khong dung" } };
+  }
+
+  if (!isBcryptHash) {
+    const upgradedPasswordHash = await bcrypt.hash(rawPassword, SALT_ROUNDS);
+    await prisma.users.update({
+      where: { user_id: user.user_id },
+      data: { password_hash: upgradedPasswordHash },
+    });
   }
 
   const token = signAccessToken(user);

@@ -30,6 +30,11 @@ function normalizeBoolean(value) {
   return undefined;
 }
 
+function normalizeStatus(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized || "published";
+}
+
 function mapVariant(variant) {
   if (!variant) {
     return null;
@@ -106,12 +111,13 @@ async function listProducts(query) {
     MAX_PAGE_SIZE
   );
   const search = String(query.search || "").trim();
+  const status = normalizeStatus(query.status);
   const featured = normalizeBoolean(query.featured);
   const bestSeller = normalizeBoolean(query.bestSeller);
   const newArrival = normalizeBoolean(query.newArrival);
 
   const where = {
-    status: "published",
+    ...(status === "all" ? {} : { status }),
     ...(query.categoryId ? { category_id: String(query.categoryId) } : {}),
     ...(query.brandId ? { brand_id: String(query.brandId) } : {}),
     ...(featured !== undefined ? { featured } : {}),
